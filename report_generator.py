@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""
+Report Generator Module
+
+This module generates human-readable reports from code analysis results.
+"""
+
+import json
+from datetime import datetime
+from typing import Dict, Any
+
+def generate_report(analysis_results: Dict[str, Any], output_path: str = "report.md") -> None:
+    """
+    Generate a markdown report from analysis results.
+    
+    Args:
+        analysis_results: Dictionary containing analysis results from CodeAnalyzer
+        output_path: Path where to save the report
+    """
+    report_content = _generate_markdown_report(analysis_results)
+    
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(report_content)
+        print(f"Report generated successfully: {output_path}")
+    except Exception as e:
+        print(f"Error saving report: {e}")
+        # Fallback to console output
+        print("\n=== Report Content ===\n")
+        print(report_content)
+
+def _generate_markdown_report(results: Dict[str, Any]) -> str:
+    """Generate markdown formatted report."""
+    lines = []
+    
+    # Header
+    lines.append(f"# AI Code Review Report")
+    lines.append("")
+    lines.append(f"**File:** `{results.get('file', 'Unknown')}`")
+    lines.append(f"**Generated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("")
+    
+    # Summary section
+    lines.append("## Summary")
+    lines.append("")
+    lines.append(results.get('summary', 'No summary available.'))
+    lines.append("")
+    
+    # Metrics section
+    metrics = results.get('metrics', {})
+    if metrics:
+        lines.append("## Code Metrics")
+        lines.append("")
+        lines.append("| Metric | Value |")
+        lines.append("|--------|-------|")
+        for key, value in metrics.items():
+            lines.append(f"| {key.replace('_', ' ').title()} | {value} |")
+        lines.append("")
+    
+    # Issues section
+    issues = results.get('issues', [])
+    if issues:
+        lines.append("## Issues Found")
+        lines.append("")
+        
+        # Group issues by severity
+        critical_issues = [i for i in issues if i.get('severity') == 'critical']
+        warning_issues = [i for i in issues if i.get('severity') == 'warning']
+        info_issues = [i for i in issues if i.get('severity') == 'info']
+        
+        if critical_issues:
+            lines.append("### ⚠️ Critical Issues")
+            lines.append("")
+            for issue in critical_issues:
+                lines.append(f"- **Line {issue.get('line', '?')}**: {issue.get('message', 'No message')}")
+                if 'type' in issue:
+                    lines.append(f"  - Type: `{issue['type']}`")
+            lines.append("")
+        
+        if warning_issues:
+            lines.append("### ⚠️ Warnings")
+            lines.append("")
+            for issue in warning_issues:
+                lines.append(f"- **Line {issue.get('line', '?')}**: {issue.get('message', 'No message')}")
+                if 'type' in issue:
+                    lines.append(f"  - Type: `{issue['type']}`")
+            lines.append("")
+        
+        if info_issues:
+            lines.append("### ℹ️ Information")
+            lines.append("")
+            for issue in info_issues:
+                lines.append(f"- **Line {issue.get('line', '?')}**: {issue.get('message', 'No message')}")
+                if 'type' in issue:
+                    lines.append(f"  - Type: `{issue['type']}`")
+            lines.append("")
+    else:
+        lines.append("## Issues Found")
+        lines.append("")
+        lines.append("✅ No issues found. Code looks good!")
+        lines.append("")
+    
+    # Recommendations section
+    lines.append("## Recommendations")
+    lines.append("")
+    
+    severity_counts = results.get('severity_counts', {})
+    total_issues = len(issues)
+    
+    if total_issues == 0:
+        lines.append("1. **Excellent work!** Your code follows good practices.")
+        lines.append("2. Consider adding more comments if the code is complex.")
+        lines.append("3. Continue following the established coding standards.")
+    else:
+        if severity_counts.get('critical', 0) > 0:
+            lines.append("1. **Address critical issues first** - these may cause runtime errors or security vulnerabilities.")
+        
+        if severity_counts.get('warning', 0) > 0:
+            lines.append("2. **Review warnings** - these indicate potential problems or code smells.")
+        
+        if severity_counts.get('info', 0) > 0:
+            lines.append("3. **Consider informational issues** - these are style suggestions that improve code readability.")
+        
+        lines.append("4. **Run tests** to ensure changes don't break existing functionality.")
+        lines.append("5. **Consider peer review** for complex changes.")
+    
+    lines.append("")
+    
+    # Footer
+    lines.append("---")
+    lines.append("*Generated by AI Code Reviewer*")
+    lines.append("")
+    
+    return "\n".join(lines)
+
+def generate_json_report(analysis_results: Dict[str, Any], output_path: str = "report.json") -> None:
+    """
+    Generate a JSON report from analysis results.
+    
+    Args:
+        analysis_results: Dictionary containing analysis results from CodeAnalyzer
+        output_path: Path where to save the report
+    """
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(analysis_results, f, indent=2, default=str)
+        print(f"JSON report generated successfully: {output_path}")
+    except Exception as e:
+        print(f"Error saving JSON report: {e}")
+
+if __name__ == "__main__":
+    # Example usage
+    sample_results = {
+        "file": "example.py",
+        "summary": "Found 3 issues: 0 critical, 2 warnings, 1 info.",
+        "metrics": {
+            "total_lines": 50,
+            "code_lines": 40,
+            "comment_lines": 10,
+            "function_count": 3,
+            "class_count": 1,
+            "comment_ratio": 0.25
+        },
+        "issues": [
+            {
+                "type": "function_too_long",
+                "severity": "warning",
+                "message": "Function 'process_data' is too long (60 lines). Consider breaking it down.",
+                "line": 15
+            },
+            {
+                "type": "line_too_long",
+                "severity": "info",
+                "message": "Line 42 exceeds 79 characters (85 chars)",
+                "line": 42
+            }
+        ],
+        "severity_counts": {
+            "critical": 0,
+            "warning": 1,
+            "info": 1
+        }
+    }
+    
+    generate_report(sample_results, "sample_report.md")
+    generate_json_report(sample_results, "sample_report.json")
